@@ -104,7 +104,7 @@ main(int argc, char *argv[])
   }
 
   for(i = 1; i < argc; i++){
-    if((fd = open(argv[i], 0)) < 0){
+    if((fd = open(argv[i], O_RDONLY)) < 0){
   b4:	4581                	li	a1,0
   b6:	00093503          	ld	a0,0(s2) # 1010 <buf>
   ba:	00000097          	auipc	ra,0x0

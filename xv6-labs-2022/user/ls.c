@@ -2,8 +2,10 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 #include "kernel/fs.h"
+#include "kernel/fcntl.h"
 
-char* fmtname(char *path)
+char*
+fmtname(char *path)
 {
   static char buf[DIRSIZ+1];
   char *p;
@@ -29,7 +31,7 @@ ls(char *path)
   struct dirent de;
   struct stat st;
 
-  if((fd = open(path, 0)) < 0){
+  if((fd = open(path, O_RDONLY)) < 0){
     fprintf(2, "ls: cannot open %s\n", path);
     return;
   }

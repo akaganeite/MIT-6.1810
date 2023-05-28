@@ -287,7 +287,7 @@ int matchstar(int c, char *re, char *text)
  21e:	098e                	slli	s3,s3,0x3
  220:	05e1                	addi	a1,a1,24
  222:	99ae                	add	s3,s3,a1
-    if((fd = open(argv[i], 0)) < 0){
+    if((fd = open(argv[i], O_RDONLY)) < 0){
  224:	4581                	li	a1,0
  226:	00093503          	ld	a0,0(s2)
  22a:	00000097          	auipc	ra,0x0

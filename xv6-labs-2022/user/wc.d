@@ -1,1 +1,2 @@
-user/wc.o: user/wc.c kernel/types.h kernel/stat.h user/user.h
+user/wc.o: user/wc.c kernel/types.h kernel/stat.h kernel/fcntl.h \
+ user/user.h

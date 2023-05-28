@@ -5,11 +5,11 @@ user/_ls:     file format elf64-littleriscv
 Disassembly of section .text:
 
 0000000000000000 <fmtname>:
-#include "kernel/stat.h"
-#include "user/user.h"
 #include "kernel/fs.h"
+#include "kernel/fcntl.h"
 
-char* fmtname(char *path)
+char*
+fmtname(char *path)
 {
    0:	7179                	addi	sp,sp,-48
    2:	f406                	sd	ra,40(sp)
@@ -111,7 +111,7 @@ ls(char *path)
   struct dirent de;
   struct stat st;
 
-  if((fd = open(path, 0)) < 0){
+  if((fd = open(path, O_RDONLY)) < 0){
   d8:	4581                	li	a1,0
   da:	00000097          	auipc	ra,0x0
   de:	4ce080e7          	jalr	1230(ra) # 5a8 <open>
