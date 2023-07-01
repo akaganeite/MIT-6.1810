@@ -1,0 +1,6 @@
+1.usertreap()
+2.a7=7,represents the SYS_EXEC systemcall number
+3.user mode
+4.lw	a3,0(zero)  ; register:a3
+5.virtual kernel address 0x0 is unused , $scause=13 means page load fault
+6.name:initcode\000\000\000\000\000\000\000  pid:1
