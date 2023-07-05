@@ -355,15 +355,15 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    pa0 = walkaddr(pagetable, va0);
+    pa0 = walkaddr(pagetable, va0);//44位的物理地址
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
-    memmove((void *)(pa0 + (dstva - va0)), src, n);
+    memmove((void *)(pa0 + (dstva - va0)), src, n);//物理地址+页内偏移
 
-    len -= n;
+    len -= n;//为copy下一页内容做准备
     src += n;
     dstva = va0 + PGSIZE;
   }
@@ -435,5 +435,34 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return 0;
   } else {
     return -1;
+  }
+}
+
+void page_print(int level)
+{
+  for(int j=0;j<level-1;j++)
+    printf(".. ");
+  printf("..");
+}
+
+void vmprint(pagetable_t pagetable,int level)
+{
+  if(level==0)
+  {
+    printf("page table %p\n",pagetable);
+    level+=1;
+  }
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      // this PTE points to a lower-level page table.
+      page_print(level);
+      printf("%d: pte %p pa %p\n",i,pte,PTE2PA(pte));
+      uint64 child = PTE2PA(pte);
+      vmprint((pagetable_t)child,level+1);
+    } else if(pte & PTE_V){
+      page_print(level);
+      printf("%d: pte %p pa %p\n",i,pte,PTE2PA(pte));
+    }
   }
 }

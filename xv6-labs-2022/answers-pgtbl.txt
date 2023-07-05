@@ -1,0 +1,2 @@
+fork() add parent process information in usyscall 
+page0:text page1:data page2:guard page page3:stack
