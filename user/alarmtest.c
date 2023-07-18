@@ -63,7 +63,7 @@ test0()
   }
 }
 
-void __attribute__ ((noinline)) foo(int i, int *j) {
+void __attribute__ ((noinline)) foo(int i, int *j) {//防止编译器内联展开foo
   if((i % 2500000) == 0) {
     write(2, ".", 1);
   }
@@ -88,10 +88,10 @@ test1()
   count = 0;
   j = 0;
   sigalarm(2, periodic);
-  for(i = 0; i < 500000000; i++){
+  for(i = 0; i < 500000000; i++){//500000000
     if(count >= 10)
       break;
-    foo(i, &j);
+    foo(i, &j);   
   }
   if(count < 10){
     printf("\ntest1 failed: too few calls to the handler\n");

@@ -63,7 +63,11 @@ usertrap(void)
     // an interrupt will change sepc, scause, and sstatus,
     // so enable only now that we're done with those registers.
     intr_on();
-
+    if(p->trapframe->a7==23)
+    {
+      //printf("%p\n",p->trapframe->epc);
+      //p->trapframe->epc=0;
+    }
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
@@ -78,7 +82,22 @@ usertrap(void)
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2)
+  {
+    //(*((void (*)())p->handler))();
+    //printf("%p\n",p->handler);
+    p->c_ticks+=1;
+    if((p->c_ticks>=p->ticks)&&(p->ticks>0)&&p->handler_flag==0)
+    {
+      p->handler_flag=1;
+      p->c_ticks=0;
+      //(*((void (*)())p->handler))();
+      p->lil_frame=*(p->trapframe);
+      p->trapframe->epc=p->handler;
+      //usertrapret();
+    }
     yield();
+  }
+
 
   usertrapret();
 }

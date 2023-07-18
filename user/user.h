@@ -22,6 +22,8 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int sigalarm(int ticks, void (*handler)());//void(*handler)()是一个指向无参数返回值为void的函数指针
+int sigreturn(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

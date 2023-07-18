@@ -1,0 +1,6 @@
+1. a0 a2-a7 a2 holds 13
+2. 没有进行函数调用，内联展开了
+3. 64a
+4. 38 函数调用后ra为返回地址
+5.printf("H%x Wo%s", 57616, &i);//r:0x72,l:0x6c,d:0x64;57620=0xe110 %x is the Hex form of input
+6.the printed value is 8229, when main starts $a2=8229
