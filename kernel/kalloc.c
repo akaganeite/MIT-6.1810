@@ -20,13 +20,22 @@ struct run {
 
 struct {
   struct spinlock lock;
+  // 物理地址最大是 PHYSTOP
+  int ref[PHYSTOP/PGSIZE]; 
+} pageref;
+
+struct {
+  struct spinlock lock;
   struct run *freelist;
 } kmem;
+
+//int ref[PHYSTOP/PGSIZE];
 
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  initlock(&pageref.lock,"pageref");
   freerange(end, (void*)PHYSTOP);
 }
 
@@ -52,6 +61,15 @@ kfree(void *pa)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
+  acquire(&pageref.lock);
+  if(pageref.ref[(uint64)pa/PGSIZE]>1)
+  {
+    pageref.ref[(uint64)pa/PGSIZE]-=1;
+    release(&pageref.lock);
+    return;
+  }
+  release(&pageref.lock);
+
   memset(pa, 1, PGSIZE);
 
   r = (struct run*)pa;
@@ -73,10 +91,28 @@ kalloc(void)
   acquire(&kmem.lock);
   r = kmem.freelist;
   if(r)
+  {
     kmem.freelist = r->next;
+    pageref.ref[((uint64)r)/PGSIZE]=1;
+  }
   release(&kmem.lock);
 
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
+}
+
+int inc(uint64 pa)
+{
+  if((pa % PGSIZE) != 0 || (char*)pa < end || pa >= PHYSTOP)
+    return -1;
+  acquire(&pageref.lock);
+  pageref.ref[pa/PGSIZE]+=1;
+  release(&pageref.lock);
+  return 1;
+}
+
+int get_ref(uint64 pa)
+{
+  return pageref.ref[pa/PGSIZE]; 
 }
