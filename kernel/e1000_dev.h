@@ -13,9 +13,9 @@
 #define E1000_RDBAL    (0x02800/4)  /* RX Descriptor Base Address Low - RW */
 #define E1000_RDTR     (0x02820/4)  /* RX Delay Timer */
 #define E1000_RADV     (0x0282C/4)  /* RX Interrupt Absolute Delay Timer */
-#define E1000_RDH      (0x02810/4)  /* RX Descriptor Head - RW */
-#define E1000_RDT      (0x02818/4)  /* RX Descriptor Tail - RW */
-#define E1000_RDLEN    (0x02808/4)  /* RX Descriptor Length - RW */
+#define E1000_RDH      (0x02810/4)  /* RX Descriptor Head - RW */             //0
+#define E1000_RDT      (0x02818/4)  /* RX Descriptor Tail - RW */             //15
+#define E1000_RDLEN    (0x02808/4)  /* RX Descriptor Length - RW */           //sizeof(rx_desc)
 #define E1000_RSRPD    (0x02C00/4)  /* RX Small Packet Detect Interrupt */
 #define E1000_TDBAL    (0x03800/4)  /* TX Descriptor Base Address Low - RW */
 #define E1000_TDLEN    (0x03808/4)  /* TX Descriptor Length - RW */

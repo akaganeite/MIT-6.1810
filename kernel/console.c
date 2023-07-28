@@ -85,15 +85,15 @@ consoleread(int user_dst, uint64 dst, int n)
 
   target = n;
   acquire(&cons.lock);
-  while(n > 0){
+  while(n > 0){//一次只读一个字符
     // wait until interrupt handler has put some
     // input into cons.buffer.
-    while(cons.r == cons.w){
+    while(cons.r == cons.w){//buffer区是空的
       if(killed(myproc())){
         release(&cons.lock);
         return -1;
       }
-      sleep(&cons.r, &cons.lock);
+      sleep(&cons.r, &cons.lock);//等待
     }
 
     c = cons.buf[cons.r++ % INPUT_BUF_SIZE];
@@ -181,7 +181,7 @@ consoleintr(int c)
 void
 consoleinit(void)
 {
-  initlock(&cons.lock, "cons");
+  initlock(&cons.lock, "cons");//console buffer lock
 
   uartinit();
 
