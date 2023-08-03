@@ -146,7 +146,7 @@ sys_link(void)
   iupdate(ip);
   iunlock(ip);
 
-  if((dp = nameiparent(new, name)) == 0)
+  if((dp = nameiparent(new, name)) == 0)//new的inode和父目录的path
     goto bad;
   ilock(dp);
   if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
@@ -248,7 +248,7 @@ create(char *path, short type, short major, short minor)
   struct inode *ip, *dp;
   char name[DIRSIZ];
 
-  if((dp = nameiparent(path, name)) == 0)
+  if((dp = nameiparent(path, name)) == 0)//parent_dir in dp
     return 0;
 
   ilock(dp);
@@ -262,7 +262,7 @@ create(char *path, short type, short major, short minor)
     return 0;
   }
 
-  if((ip = ialloc(dp->dev, type)) == 0){
+  if((ip = ialloc(dp->dev, type)) == 0){//new inode
     iunlockput(dp);
     return 0;
   }
@@ -352,13 +352,55 @@ sys_open(void)
   if(ip->type == T_DEVICE){
     f->type = FD_DEVICE;
     f->major = ip->major;
-  } else {
+  } 
+  else if(ip->type==T_SYMLINK)
+  {
+    if((omode&O_NOFOLLOW)==0)
+    {//struct inode* sym;
+      int count=0;
+      char path[MAXPATH];
+      int arr[10];
+      while(ip->type==T_SYMLINK&&count<10)
+      {
+        for(int i=0;i<=count;i++)
+        {
+          if(arr[i]==ip->inum)
+          {
+            iunlockput(ip);
+            end_op();
+            return -1;
+          }
+        }
+        arr[count]=ip->inum;
+        if(readi(ip,0,(uint64)path,0,sizeof(path))!=sizeof(path)||count>=10)
+        {
+          iunlockput(ip);
+          end_op();
+          return -1;
+        }             
+        iunlock(ip);
+        ip=namei(path);
+        if(ip==0)
+        {
+          end_op();
+          printf("namei in open\n");
+          return -1;
+        }
+        ilock(ip);
+        count+=1;
+      }
+    }
+    f->type = FD_INODE;
+    f->off = 0;
+  }
+  else {
     f->type = FD_INODE;
     f->off = 0;
   }
   f->ip = ip;
   f->readable = !(omode & O_WRONLY);
   f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+
 
   if((omode & O_TRUNC) && ip->type == T_FILE){
     itrunc(ip);
@@ -501,5 +543,34 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+uint64 sys_symlink(void)//target是待连接的文件路径 path是sym的路径
+{
+  char target[MAXPATH], path[MAXPATH],name[DIRSIZ];
+  struct inode* ind;//path的父路径
+  struct inode* ip;//path自己
+  uint poff;
+  if(argstr(0, target, MAXPATH) < 0)
+    return -1;
+  if(argstr(1, path, MAXPATH) < 0)
+    return -1;
+  if((ind=nameiparent(path,name))==0)
+    return -1;
+  ilock(ind);
+  if(dirlookup(ind,name,&poff)!=0)
+  {
+    iunlockput(ind);
+    return -1;
+  }
+  iunlockput(ind);
+  begin_op();
+  ip=create(path,T_SYMLINK,0,0);
+  if(writei(ip,0,(uint64)target,0,sizeof(target))!=sizeof(target))
+    return -1;
+  iunlockput(ip);
+  
+  end_op();
   return 0;
 }

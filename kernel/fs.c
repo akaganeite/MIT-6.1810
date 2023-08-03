@@ -299,7 +299,6 @@ ilock(struct inode *ip)
     panic("ilock");
 
   acquiresleep(&ip->lock);
-
   if(ip->valid == 0){
     bp = bread(ip->dev, IBLOCK(ip->inum, sb));
     dip = (struct dinode*)bp->data + ip->inum%IPB;
@@ -385,7 +384,7 @@ bmap(struct inode *ip, uint bn)
   uint addr, *a;
   struct buf *bp;
 
-  if(bn < NDIRECT){
+  if(bn < NDIRECT){//11
     if((addr = ip->addrs[bn]) == 0){
       addr = balloc(ip->dev);
       if(addr == 0)
@@ -396,7 +395,7 @@ bmap(struct inode *ip, uint bn)
   }
   bn -= NDIRECT;
 
-  if(bn < NINDIRECT){
+  if(bn < NINDIRECT){//256
     // Load indirect block, allocating if necessary.
     if((addr = ip->addrs[NDIRECT]) == 0){
       addr = balloc(ip->dev);
@@ -410,7 +409,48 @@ bmap(struct inode *ip, uint bn)
       addr = balloc(ip->dev);
       if(addr){
         a[bn] = addr;
-        log_write(bp);
+        log_write(bp);//更新bp，多了个索引
+      }
+    }
+    brelse(bp);
+    return addr;
+  }
+
+  bn-=NINDIRECT;
+  int d_bn;
+  if(bn<NDINDIRECT)//256*256
+  {
+    d_bn=bn%NINDIRECT;//块内索引
+    bn=bn/NINDIRECT;//在哪个二级块(一级块索引)
+
+    if((addr=ip->addrs[NDIRECT+1])==0)//addr:一级索引块物理块号
+    {
+      addr = balloc(ip->dev);
+      if(addr == 0)
+        return 0;
+      ip->addrs[NDIRECT+1] = addr;
+    }
+
+    bp = bread(ip->dev, addr);//读到一级索引的数据，存在bp
+    a = (uint*)bp->data;
+    if((addr = a[bn]) == 0)//一级块内找二级块，addr是二级物理块号
+    {
+      addr = balloc(ip->dev);
+      if(addr)
+      {
+        a[bn] = addr;
+        log_write(bp);//更新bp，多了个索引
+      }
+    }
+    brelse(bp);
+
+    bp = bread(ip->dev, addr);//读二级索引块
+    a = (uint*)bp->data;//二级块数据
+    if((addr = a[d_bn]) == 0){//d_bn:二级块内索引
+      addr = balloc(ip->dev);
+      if(addr){
+        a[d_bn] = addr;
+        log_write(bp);//更新bp，多了个索引
       }
     }
     brelse(bp);
@@ -448,6 +488,31 @@ itrunc(struct inode *ip)
     ip->addrs[NDIRECT] = 0;
   }
 
+  if(ip->addrs[NDIRECT+1])
+  {
+    bp = bread(ip->dev, ip->addrs[NDIRECT+1]);
+    a = (uint*)bp->data;
+    for(j = 0; j < NINDIRECT; j++)
+    {
+      if(a[j])
+      {
+        struct buf* tmp;
+        tmp=bread(ip->dev,a[j]);
+        uint* b=(uint*)tmp->data;
+        for(int k=0;k<NINDIRECT;k++)
+        {
+          if(b[k])
+            bfree(ip->dev,b[k]);
+        }
+        bfree(ip->dev, a[j]);
+        brelse(tmp);
+      }
+    }
+    brelse(bp);
+    bfree(ip->dev, ip->addrs[NDIRECT+1]);
+    ip->addrs[NDIRECT+1] = 0;
+  }
+
   ip->size = 0;
   iupdate(ip);
 }
@@ -469,7 +534,7 @@ stati(struct inode *ip, struct stat *st)
 // If user_dst==1, then dst is a user virtual address;
 // otherwise, dst is a kernel address.
 int
-readi(struct inode *ip, int user_dst, uint64 dst, uint off, uint n)
+readi(struct inode *ip, int user_dst, uint64 dst, uint off, uint n)//从off开始读到off+n
 {
   uint tot, m;
   struct buf *bp;
