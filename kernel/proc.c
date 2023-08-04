@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "fcntl.h"
 
 struct cpu cpus[NCPU];
 
@@ -124,7 +125,12 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-
+  for(int i=0;i<VMAMAX;i++)
+  {
+    p->VMA[i].valid=0;
+    p->VMA[i].cnt=0;
+  }
+  p->p_mmap=TRAPFRAME;
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -308,6 +314,16 @@ fork(void)
       np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
 
+  for(i=0;i<VMAMAX;i++)
+  {
+    if(p->VMA[i].valid)
+    {
+      np->VMA[i]=p->VMA[i];
+      filedup(p->VMA[i].f);
+    }
+  }
+  np->p_mmap=p->p_mmap;
+
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
@@ -350,6 +366,37 @@ exit(int status)
 
   if(p == initproc)
     panic("init exiting");
+
+  int i=0;
+  while(i<VMAMAX)
+  {
+    if(p->VMA[i].valid)
+    {
+      struct VMAelem* v=&p->VMA[i];
+      if(v->cnt>0)
+      {
+        for(uint64 va=v->addr;va<(v->addr+v->length);va+=PGSIZE)
+        {
+          uint64 pa;
+          if((pa=walkaddr(p->pagetable,va))!=0)
+          {
+            if(v->flags&MAP_SHARED)//write back
+            {
+              set_off(va-v->addr,v->f);
+              filewrite(v->f,va,PGSIZE);
+              set_off(0,v->f);
+            }
+            uvmunmap(p->pagetable,va,1,1);
+            v->cnt-=1;
+          }
+        }
+        if(v->cnt==0)
+          fileclose(v->f);
+      }
+    }
+    i++;
+  }
+
 
   // Close all open files.
   for(int fd = 0; fd < NOFILE; fd++){

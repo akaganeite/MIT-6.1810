@@ -271,7 +271,7 @@ fork_test(void)
   // read just 2nd page.
   if(*(p1+PGSIZE) != 'A')
     err("fork mismatch (1)");
-
+  //printf("whooya\n");
   if((pid = fork()) < 0)
     err("fork");
   if (pid == 0) {

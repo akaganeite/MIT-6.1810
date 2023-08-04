@@ -81,6 +81,18 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+#define VMAMAX 16
+struct VMAelem{
+    uint64 addr;
+    int length;
+    int prot;
+    int flags;
+    int valid;
+    int cnt;
+    struct file* f;
+};
+
+
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -96,6 +108,8 @@ struct proc {
   struct proc *parent;         // Parent process
 
   // these are private to the process, so p->lock need not be held.
+  struct VMAelem VMA[VMAMAX];
+  uint64 p_mmap;
   uint64 kstack;               // Virtual address of kernel stack
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table

@@ -180,3 +180,15 @@ filewrite(struct file *f, uint64 addr, int n)
   return ret;
 }
 
+int set_off(int off,struct file* f)
+{
+  acquire(&ftable.lock);
+  if(off<0||off>f->ip->size)
+  {
+    release(&ftable.lock);
+    return -1;
+  }
+  f->off=off;
+  release(&ftable.lock);
+  return 0;
+}

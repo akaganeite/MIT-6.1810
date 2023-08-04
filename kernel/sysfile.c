@@ -503,3 +503,92 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64
+sys_mmap(void)
+{
+  int length,prot,flags,fd;
+  uint64 addr;
+  argaddr(0,&addr);
+  argint(1,&length);
+  argint(2,&prot);
+  argint(3,&flags);
+  argint(4,&fd);
+  struct proc* p=myproc();
+  if(!p->ofile[fd]->writable&&(flags&MAP_SHARED)&&(prot&PROT_WRITE))
+    return 0xffffffffffffffff;
+  int i;
+  for(i=0;i<VMAMAX;i++)
+  {
+    if(p->VMA[i].valid==0)
+    {
+      p->VMA[i].valid=1;
+      p->VMA[i].f=p->ofile[fd];
+      p->VMA[i].flags=flags;
+      p->VMA[i].prot=prot;
+      p->VMA[i].length=length;
+      break;
+    }
+  }
+  // if(i==VMAMAX)
+  //   return 0xffffffffffffffff;
+  filedup(p->ofile[fd]);
+
+  addr=PGROUNDDOWN(p->p_mmap-length);
+  p->p_mmap=addr;  
+  p->VMA[i].addr=addr;
+  return addr;
+  //return 0xffffffffffffffff;
+}
+
+  
+
+uint64
+sys_munmap(void)
+{
+  uint64 addr;
+  int length;
+  argaddr(0,&addr);
+  argint(1,&length);
+  struct proc* p=myproc();
+  struct VMAelem* v;
+  int i=0;
+  while(i<VMAMAX)
+  {
+    //printf("addr:%p\n",p->VMA[i].addr);
+    if(addr>=p->VMA[i].addr&&(addr+length)<=(p->VMA[i].addr+p->VMA[i].length))
+      break;
+    i++;
+  }
+  v=&p->VMA[i];
+  if(v->cnt==0)
+    return 0;
+  if(addr==v->addr||(addr+length)==v->addr+v->length)
+  {
+      for(uint64 va=addr;va<(addr+length);va+=PGSIZE)
+      {
+        uint64 pa;
+        if((pa=walkaddr(p->pagetable,va))!=0)
+        {
+          if(v->flags&MAP_SHARED)//write back
+          {
+            set_off(va-v->addr,v->f);
+            filewrite(v->f,va,PGSIZE);
+            set_off(0,v->f);
+          }
+          uvmunmap(p->pagetable,va,1,1);
+          v->cnt-=1;
+        }
+      }
+      if(v->cnt==0)
+      {
+        v->valid=0;
+        fileclose(v->f);
+      }
+      return 0;
+  }
+  else{
+    printf("illegal munmap\n");
+  }
+  return -1;
+}
